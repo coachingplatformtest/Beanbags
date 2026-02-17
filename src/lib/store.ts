@@ -53,7 +53,7 @@ export const useStore = create<AppStore>()(
         const slip = get().betSlip
         if (slip.length >= 5) return // Max 5 for parlays
         if (slip.some(s => s.id === item.id)) return
-        set({ betSlip: [...slip, item], slipOpen: true })
+        set({ betSlip: [...slip, item] })
       },
       
       removeFromSlip: (id) => {

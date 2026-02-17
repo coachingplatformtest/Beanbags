@@ -109,7 +109,7 @@ export function BetSlip() {
     <>
       <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSlipOpen(false)} />
       
-      <div className="fixed bottom-0 right-0 md:right-4 md:bottom-4 w-full md:w-96 bg-bg-card border-t md:border border-border-subtle md:rounded-xl z-50 max-h-[85vh] overflow-hidden animate-slide-up">
+      <div className="fixed bottom-0 right-0 md:right-4 md:bottom-4 w-full md:w-[28rem] bg-bg-card border-t md:border border-border-subtle md:rounded-xl z-50 max-h-[55vh] md:max-h-[85vh] overflow-hidden animate-slide-up">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border-subtle">
           <h2 className="font-heading font-bold text-lg flex items-center gap-2">
@@ -134,7 +134,7 @@ export function BetSlip() {
           </div>
         </div>
 
-        <div className="p-4 overflow-y-auto max-h-[60vh]">
+        <div className="p-4 overflow-y-auto max-h-[40vh] md:max-h-[60vh]">
           {betSlip.length === 0 ? (
             <div className="text-center py-8 text-text-secondary">
               <p>No selections yet</p>
@@ -192,6 +192,7 @@ export function BetSlip() {
                     type="number"
                     value={stake}
                     onChange={(e) => setStake(parseFloat(e.target.value) || 0)}
+                    onWheel={(e) => e.currentTarget.blur()}
                     min="0.5"
                     step="0.5"
                     className="flex-1 px-4 py-3 bg-bg-primary border border-border-subtle rounded-lg font-heading text-lg"
