@@ -9,7 +9,7 @@ import { UserBar } from '@/components'
 import { formatOdds, settleSpread, settleMoneyline, settleTotal, calculateSettlement } from '@/lib/betting-math'
 import type { Team, Game, Future, Prop, User, Bet, ParlayBet, ParlayLeg, WeeklySlate } from '@/types'
 
-type Tab = 'slate' | 'games' | 'futures' | 'props' | 'users' | 'settle'
+type Tab = 'slate' | 'games' | 'futures' | 'props' | 'users' | 'settle' | 'bets'
 
 export default function AdminPage() {
   const { isAdmin, setIsAdmin } = useStore()
@@ -25,6 +25,8 @@ export default function AdminPage() {
   const [futures, setFutures] = useState<Future[]>([])
   const [props, setProps] = useState<Prop[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [allBets, setAllBets] = useState<any[]>([])
+  const [allParlays, setAllParlays] = useState<any[]>([])
 
   useEffect(() => {
     if (isAdmin) loadAll()
@@ -33,13 +35,15 @@ export default function AdminPage() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [slateRes, teamsRes, gamesRes, futuresRes, propsRes, usersRes] = await Promise.all([
+      const [slateRes, teamsRes, gamesRes, futuresRes, propsRes, usersRes, betsRes, parlaysRes] = await Promise.all([
         supabase.from('weekly_slate').select('*').order('updated_at', { ascending: false }).limit(1).single(),
         supabase.from('teams').select('*').order('short_name'),
         supabase.from('games').select('*, home_team:teams!games_home_team_id_fkey(*), away_team:teams!games_away_team_id_fkey(*)').order('week'),
         supabase.from('futures').select('*').order('odds_numeric'),
         supabase.from('props').select('*').order('created_at', { ascending: false }),
         supabase.from('users').select('*').order('units_remaining', { ascending: false }),
+        supabase.from('bets').select('*, user:users(name)').order('created_at', { ascending: false }),
+        supabase.from('parlay_bets').select('*, user:users(name), legs:parlay_legs(*)').order('created_at', { ascending: false }),
       ])
       if (slateRes.data) setSlate(slateRes.data)
       if (teamsRes.data) setTeams(teamsRes.data)
@@ -47,6 +51,8 @@ export default function AdminPage() {
       if (futuresRes.data) setFutures(futuresRes.data as Future[])
       if (propsRes.data) setProps(propsRes.data as Prop[])
       if (usersRes.data) setUsers(usersRes.data)
+      if (betsRes.data) setAllBets(betsRes.data)
+      if (parlaysRes.data) setAllParlays(parlaysRes.data)
     } catch (e) {
       console.error(e)
     }
@@ -100,7 +106,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-4 mb-6">
-          {(['slate', 'games', 'futures', 'props', 'users', 'settle'] as Tab[]).map(t => (
+          {(['slate', 'games', 'futures', 'props', 'users', 'bets', 'settle'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -127,6 +133,7 @@ export default function AdminPage() {
             {tab === 'futures' && <FuturesTab futures={futures} onRefresh={loadAll} setMsg={setMsg} />}
             {tab === 'props' && <PropsTab props={props} onRefresh={loadAll} setMsg={setMsg} />}
             {tab === 'users' && <UsersTab users={users} onRefresh={loadAll} setMsg={setMsg} />}
+            {tab === 'bets' && <BetsTab bets={allBets} parlays={allParlays} />}
             {tab === 'settle' && <SettleTab games={games} futures={futures} props={props} onRefresh={loadAll} setMsg={setMsg} />}
           </>
         )}
@@ -419,6 +426,138 @@ function UsersTab({ users, onRefresh, setMsg }: { users: User[]; onRefresh: () =
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// Bets Tab
+function BetsTab({ bets, parlays }: { bets: any[]; parlays: any[] }) {
+  const [filterUser, setFilterUser] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [view, setView] = useState<'straight' | 'parlays'>('straight')
+
+  const users = Array.from(new Set(bets.map(b => b.user?.name).filter(Boolean)))
+
+  const filteredBets = bets.filter(b => {
+    if (filterUser !== 'all' && b.user?.name !== filterUser) return false
+    if (filterStatus !== 'all' && b.status !== filterStatus) return false
+    return true
+  })
+
+  const filteredParlays = parlays.filter(p => {
+    if (filterUser !== 'all' && p.user?.name !== filterUser) return false
+    if (filterStatus !== 'all' && p.status !== filterStatus) return false
+    return true
+  })
+
+  const statusColor = (s: string) => {
+    if (s === 'won') return 'text-accent-green'
+    if (s === 'lost') return 'text-accent-red'
+    if (s === 'push') return 'text-accent-gold'
+    return 'text-text-secondary'
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setView('straight')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${view === 'straight' ? 'bg-accent-green text-bg-primary' : 'bg-bg-card border border-border-subtle'}`}
+          >
+            Straight ({bets.length})
+          </button>
+          <button
+            onClick={() => setView('parlays')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${view === 'parlays' ? 'bg-accent-green text-bg-primary' : 'bg-bg-card border border-border-subtle'}`}
+          >
+            Parlays ({parlays.length})
+          </button>
+        </div>
+        <select
+          value={filterUser}
+          onChange={e => setFilterUser(e.target.value)}
+          className="px-3 py-2 bg-bg-card border border-border-subtle rounded-lg text-sm"
+        >
+          <option value="all">All Users</option>
+          {users.map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+          className="px-3 py-2 bg-bg-card border border-border-subtle rounded-lg text-sm"
+        >
+          <option value="all">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="won">Won</option>
+          <option value="lost">Lost</option>
+          <option value="push">Push</option>
+        </select>
+      </div>
+
+      {view === 'straight' ? (
+        <div className="card overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-bg-surface">
+              <tr>
+                <th className="px-4 py-3 text-left">User</th>
+                <th className="px-4 py-3 text-left">Selection</th>
+                <th className="px-4 py-3 text-right">Odds</th>
+                <th className="px-4 py-3 text-right">Wager</th>
+                <th className="px-4 py-3 text-right">To Win</th>
+                <th className="px-4 py-3 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBets.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-text-secondary">No bets found</td></tr>
+              ) : filteredBets.map(b => (
+                <tr key={b.id} className="border-t border-border-subtle hover:bg-bg-surface/50">
+                  <td className="px-4 py-3 font-medium">{b.user?.name || '—'}</td>
+                  <td className="px-4 py-3 text-text-secondary max-w-[200px] truncate">{b.selection}</td>
+                  <td className="px-4 py-3 text-right font-heading">{formatOdds(b.odds)}</td>
+                  <td className="px-4 py-3 text-right">{b.units_wagered.toFixed(1)}u</td>
+                  <td className="px-4 py-3 text-right text-accent-green">+{(b.potential_payout - b.units_wagered).toFixed(1)}u</td>
+                  <td className={`px-4 py-3 text-right font-semibold capitalize ${statusColor(b.status)}`}>{b.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredParlays.length === 0 ? (
+            <div className="card p-8 text-center text-text-secondary">No parlays found</div>
+          ) : filteredParlays.map(p => (
+            <div key={p.id} className="card p-4">
+              <div className="flex justify-between items-center mb-3">
+                <div className="flex items-center gap-3">
+                  <span className="font-heading font-bold">{p.user?.name || '—'}</span>
+                  <span className="text-text-secondary text-sm">{p.legs?.length}-leg parlay</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm">{p.units_wagered.toFixed(1)}u → <span className="text-accent-green">+{(p.potential_payout - p.units_wagered).toFixed(1)}u</span></span>
+                  <span className={`font-semibold capitalize text-sm ${statusColor(p.status)}`}>{p.status}</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                {(p.legs || []).map((leg: any) => (
+                  <div key={leg.id} className="flex justify-between text-sm text-text-secondary pl-2 border-l border-border-subtle">
+                    <span>{leg.selection}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-heading">{formatOdds(leg.odds)}</span>
+                      {leg.status !== 'pending' && (
+                        <span className={`text-xs font-semibold capitalize ${statusColor(leg.status)}`}>{leg.status}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
