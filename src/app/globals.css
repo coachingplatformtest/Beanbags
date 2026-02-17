@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-card: #14141f;
+  --bg-card-hover: #1a1a2e;
+  --bg-surface: #1e1e30;
+  --text-primary: #e8e8ed;
+  --text-secondary: #8888a0;
+  --accent-green: #00ff87;
+  --accent-gold: #ffd700;
+  --accent-red: #ff4757;
+  --accent-blue: #4a90d9;
+  --accent-yellow: #ffbe0b;
+  --border-subtle: #2a2a3e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-card);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a4e;
+}
+
+::selection {
+  background: rgba(0, 255, 135, 0.2);
+  color: var(--text-primary);
+}
+
+/* Odds button */
+.odds-btn {
+  @apply px-4 py-3 bg-bg-card border border-border-subtle rounded-lg font-body font-semibold
+         transition-all duration-200 hover:bg-bg-card-hover hover:border-accent-green
+         active:scale-95 cursor-pointer;
+}
+.odds-btn.selected {
+  @apply bg-accent-green text-bg-primary border-accent-green;
+}
+.odds-btn:disabled {
+  @apply opacity-50 cursor-not-allowed hover:bg-bg-card hover:border-border-subtle;
+}
+
+/* Status badges */
+.badge {
+  @apply px-2 py-0.5 rounded text-xs font-semibold uppercase;
+}
+.badge-pending {
+  @apply bg-accent-yellow/20 text-accent-yellow;
+}
+.badge-won {
+  @apply bg-accent-green/20 text-accent-green;
+}
+.badge-lost {
+  @apply bg-accent-red/20 text-accent-red;
+}
+.badge-push {
+  @apply bg-text-secondary/20 text-text-secondary;
+}
+.badge-user-game {
+  @apply bg-accent-gold/20 text-accent-gold;
+}
+
+/* Cards */
+.card {
+  @apply bg-bg-card border border-border-subtle rounded-xl transition-all duration-200;
+}
+.card:hover {
+  @apply border-border-subtle/80;
+}
+
+/* Animations */
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 255, 135, 0.4); }
+  50% { box-shadow: 0 0 20px 5px rgba(0, 255, 135, 0.2); }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-pulse-green {
+  animation: pulse-green 2s ease-in-out infinite;
+}
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out forwards;
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+/* Input */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Focus */
+input:focus, button:focus, select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 255, 135, 0.3);
+}
+
+/* Ticker */
+.ticker-wrapper {
+  @apply overflow-hidden whitespace-nowrap;
+}
+.ticker-content {
+  @apply inline-block animate-[scroll_30s_linear_infinite];
+}
+@keyframes scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
