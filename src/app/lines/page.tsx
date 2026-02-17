@@ -13,7 +13,6 @@ export default function LinesPage() {
   const [slate, setSlate] = useState<WeeklySlate | null>(null)
   const [games, setGames] = useState<Game[]>([])
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
-  const [userGamesOnly, setUserGamesOnly] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -36,7 +35,7 @@ export default function LinesPage() {
         setSelectedWeek(slateData.current_week)
       }
       
-      // Get all games
+      // Get user games only (betting is only available for user matchups)
       const { data: gamesData } = await supabase
         .from('games')
         .select(`
@@ -44,6 +43,7 @@ export default function LinesPage() {
           home_team:teams!games_home_team_id_fkey(*),
           away_team:teams!games_away_team_id_fkey(*)
         `)
+        .eq('is_user_game', true)
         .order('week', { ascending: true })
       
       if (gamesData) setGames(gamesData as Game[])
@@ -55,12 +55,10 @@ export default function LinesPage() {
   }
 
   const weeks = [...new Set(games.map(g => g.week))].sort((a, b) => a - b)
-  
-  const filteredGames = games.filter(g => {
-    if (selectedWeek && g.week !== selectedWeek) return false
-    if (userGamesOnly && !g.is_user_game) return false
-    return true
-  })
+
+  const filteredGames = selectedWeek
+    ? games.filter(g => g.week === selectedWeek)
+    : games
 
   return (
     <div className="min-h-screen bg-bg-primary">
@@ -72,17 +70,7 @@ export default function LinesPage() {
           <h1 className="font-heading text-3xl font-bold">
             LINES {selectedWeek && <span className="text-accent-green">WEEK {selectedWeek}</span>}
           </h1>
-          
-          {/* User games filter */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={userGamesOnly}
-              onChange={(e) => setUserGamesOnly(e.target.checked)}
-              className="w-4 h-4 accent-accent-green"
-            />
-            <span className="text-sm">User Games Only</span>
-          </label>
+          <span className="badge badge-user-game">🎮 User Games Only</span>
         </div>
 
         {/* Name entry */}
