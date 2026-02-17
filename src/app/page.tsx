@@ -60,7 +60,7 @@ export default function HomePage() {
             BEANBAGS<span className="text-accent-green">BOOK</span>
           </h1>
           <p className="text-text-secondary text-lg mb-2">
-            The Official Sportsbook of the 2030 Dynasty
+            The Official Sportsbook of the 2030 Dynasty 🏆
           </p>
           {slate && (
             <p className="text-accent-gold font-heading">
