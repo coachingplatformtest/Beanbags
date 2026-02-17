@@ -10,7 +10,7 @@ import { formatOdds } from '@/lib/betting-math'
 import type { Prop } from '@/types'
 
 export default function PropsPage() {
-  const { user, addToSlip, isInSlip, betSlip } = useStore()
+  const { user, addToSlip, removeFromSlip, isInSlip, betSlip } = useStore()
   const [props, setProps] = useState<Prop[]>([])
   const [loading, setLoading] = useState(true)
   const canAdd = betSlip.length < 5
@@ -37,9 +37,13 @@ export default function PropsPage() {
     }
   }
 
-  const addProp = (prop: Prop, side: 'selection' | 'counter') => {
+  const toggleProp = (prop: Prop, side: 'selection' | 'counter') => {
     const id = `prop-${prop.id}-${side}`
-    if (!canAdd && !isInSlip(id)) return
+    if (isInSlip(id)) {
+      removeFromSlip(id)
+      return
+    }
+    if (!canAdd) return
     const odds = side === 'selection' ? prop.odds : prop.counter_odds!
     const sel = side === 'selection' ? prop.selection_name : prop.counter_selection!
     addToSlip({
@@ -93,7 +97,7 @@ export default function PropsPage() {
                   
                   <div className="flex gap-3">
                     <button
-                      onClick={() => addProp(prop, 'selection')}
+                      onClick={() => toggleProp(prop, 'selection')}
                       disabled={!canAdd && !selSelected}
                       className={`flex-1 py-3 rounded-lg border transition ${
                         selSelected 
@@ -107,7 +111,7 @@ export default function PropsPage() {
                     
                     {prop.counter_selection && (
                       <button
-                        onClick={() => addProp(prop, 'counter')}
+                        onClick={() => toggleProp(prop, 'counter')}
                         disabled={!canAdd && !counterSelected}
                         className={`flex-1 py-3 rounded-lg border transition ${
                           counterSelected 

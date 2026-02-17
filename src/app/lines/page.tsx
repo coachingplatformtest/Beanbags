@@ -108,7 +108,11 @@ export default function LinesPage() {
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             {filteredGames.map(game => (
-              <GameCard key={game.id} game={game} />
+              <GameCard
+                key={game.id}
+                game={game}
+                locked={game.week > (slate?.current_week ?? 0)}
+              />
             ))}
           </div>
         )}

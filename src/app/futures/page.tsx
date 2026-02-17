@@ -12,7 +12,7 @@ import type { Future, Prop } from '@/types'
 type Tab = 'natty' | 'heisman' | 'win_totals'
 
 export default function FuturesPage() {
-  const { user, addToSlip, isInSlip, betSlip } = useStore()
+  const { user, addToSlip, removeFromSlip, isInSlip, betSlip } = useStore()
   const [tab, setTab] = useState<Tab>('natty')
   const [futures, setFutures] = useState<Future[]>([])
   const [winTotals, setWinTotals] = useState<Prop[]>([])
@@ -48,9 +48,10 @@ export default function FuturesPage() {
     }
   }
 
-  const addFuture = (future: Future) => {
+  const toggleFuture = (future: Future) => {
     const id = `future-${future.id}`
-    if (!canAdd && !isInSlip(id)) return
+    if (isInSlip(id)) { removeFromSlip(id); return }
+    if (!canAdd) return
     addToSlip({
       id,
       type: 'future',
@@ -61,9 +62,10 @@ export default function FuturesPage() {
     })
   }
 
-  const addWinTotal = (prop: Prop, side: 'selection' | 'counter') => {
+  const toggleWinTotal = (prop: Prop, side: 'selection' | 'counter') => {
     const id = `prop-${prop.id}-${side}`
-    if (!canAdd && !isInSlip(id)) return
+    if (isInSlip(id)) { removeFromSlip(id); return }
+    if (!canAdd) return
     const odds = side === 'selection' ? prop.odds : prop.counter_odds!
     const sel = side === 'selection' ? prop.selection_name : prop.counter_selection!
     addToSlip({
@@ -128,7 +130,7 @@ export default function FuturesPage() {
                   return (
                     <button
                       key={f.id}
-                      onClick={() => addFuture(f)}
+                      onClick={() => toggleFuture(f)}
                       disabled={!canAdd && !selected}
                       className={`card p-4 text-left transition ${
                         selected ? 'border-accent-green bg-accent-green/10' : 'hover:border-accent-green'
@@ -161,7 +163,7 @@ export default function FuturesPage() {
                   return (
                     <button
                       key={f.id}
-                      onClick={() => addFuture(f)}
+                      onClick={() => toggleFuture(f)}
                       disabled={!canAdd && !selected}
                       className={`card p-4 text-left transition ${
                         selected ? 'border-accent-green bg-accent-green/10' : 'hover:border-accent-green'
@@ -191,7 +193,7 @@ export default function FuturesPage() {
                       <p className="font-heading font-bold mb-3">{p.description}</p>
                       <div className="flex gap-3">
                         <button
-                          onClick={() => addWinTotal(p, 'selection')}
+                          onClick={() => toggleWinTotal(p, 'selection')}
                           disabled={!canAdd && !overSelected}
                           className={`flex-1 py-3 rounded-lg border transition ${
                             overSelected 
@@ -203,7 +205,7 @@ export default function FuturesPage() {
                           <p className="font-heading font-bold">{formatOdds(p.odds)}</p>
                         </button>
                         <button
-                          onClick={() => addWinTotal(p, 'counter')}
+                          onClick={() => toggleWinTotal(p, 'counter')}
                           disabled={!canAdd && !underSelected}
                           className={`flex-1 py-3 rounded-lg border transition ${
                             underSelected 
