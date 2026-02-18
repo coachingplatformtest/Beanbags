@@ -70,6 +70,7 @@ export interface Future {
 export interface Prop {
   id: string
   game_id: string | null
+  team_id: string | null
   week: number | null
   category: string
   description: string
@@ -81,6 +82,7 @@ export interface Prop {
   result: string | null
   created_at: string
   game?: Game
+  team?: Team
 }
 
 export interface Bet {

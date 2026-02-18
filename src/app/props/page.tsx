@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useStore } from '@/lib/store'
 import { UserBar, BetSlip, NameEntry } from '@/components'
 import { formatOdds } from '@/lib/betting-math'
+import { canBetProp } from '@/lib/user-teams'
 import type { Prop } from '@/types'
 
 export default function PropsPage() {
@@ -24,7 +25,7 @@ export default function PropsPage() {
     try {
       const { data } = await supabase
         .from('props')
-        .select('*, game:games(*, home_team:teams!games_home_team_id_fkey(*), away_team:teams!games_away_team_id_fkey(*))')
+        .select('*, team:teams(*), game:games(*, home_team:teams!games_home_team_id_fkey(*), away_team:teams!games_away_team_id_fkey(*))')
         .eq('is_active', true)
         .neq('category', 'season_win_total')
         .order('created_at', { ascending: false })
@@ -83,14 +84,28 @@ export default function PropsPage() {
             {props.map(prop => {
               const selSelected = isInSlip(`prop-${prop.id}-selection`)
               const counterSelected = isInSlip(`prop-${prop.id}-counter`)
+              const propTeamShortName = prop.team?.short_name ?? null
+              const allowed = !user || canBetProp(user.name, propTeamShortName)
               
               return (
                 <div key={prop.id} className="card p-4">
                   <div className="mb-3">
-                    <p className="font-heading font-bold">{prop.description}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-heading font-bold">{prop.description}</p>
+                      {prop.team && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-bg-surface text-text-secondary border border-border-subtle">
+                          {prop.team.logo_emoji} {prop.team.abbreviation}
+                        </span>
+                      )}
+                    </div>
                     {prop.game && (
                       <p className="text-xs text-text-secondary mt-1">
                         {prop.game.away_team?.abbreviation} @ {prop.game.home_team?.abbreviation} • Week {prop.week}
+                      </p>
+                    )}
+                    {!allowed && (
+                      <p className="text-xs text-accent-red mt-1 font-medium">
+                        🚫 Can't bet your own team's props
                       </p>
                     )}
                   </div>
@@ -98,12 +113,14 @@ export default function PropsPage() {
                   <div className="flex gap-3">
                     <button
                       onClick={() => toggleProp(prop, 'selection')}
-                      disabled={!canAdd && !selSelected}
+                      disabled={!allowed || (!canAdd && !selSelected)}
                       className={`flex-1 py-3 rounded-lg border transition ${
                         selSelected 
                           ? 'bg-accent-green text-bg-primary border-accent-green' 
+                          : !allowed
+                          ? 'bg-bg-surface border-border-subtle opacity-40 cursor-not-allowed'
                           : 'bg-bg-surface border-border-subtle hover:border-accent-green'
-                      } ${!canAdd && !selSelected ? 'opacity-50' : ''}`}
+                      } ${!canAdd && !selSelected && allowed ? 'opacity-50' : ''}`}
                     >
                       <p className="text-sm">{prop.selection_name}</p>
                       <p className="font-heading font-bold">{formatOdds(prop.odds)}</p>
@@ -112,12 +129,14 @@ export default function PropsPage() {
                     {prop.counter_selection && (
                       <button
                         onClick={() => toggleProp(prop, 'counter')}
-                        disabled={!canAdd && !counterSelected}
+                        disabled={!allowed || (!canAdd && !counterSelected)}
                         className={`flex-1 py-3 rounded-lg border transition ${
                           counterSelected 
                             ? 'bg-accent-green text-bg-primary border-accent-green' 
+                            : !allowed
+                            ? 'bg-bg-surface border-border-subtle opacity-40 cursor-not-allowed'
                             : 'bg-bg-surface border-border-subtle hover:border-accent-green'
-                        } ${!canAdd && !counterSelected ? 'opacity-50' : ''}`}
+                        } ${!canAdd && !counterSelected && allowed ? 'opacity-50' : ''}`}
                       >
                         <p className="text-sm">{prop.counter_selection}</p>
                         <p className="font-heading font-bold">{formatOdds(prop.counter_odds!)}</p>

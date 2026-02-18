@@ -131,7 +131,7 @@ export default function AdminPage() {
             {tab === 'slate' && <SlateTab slate={slate} onRefresh={loadAll} setMsg={setMsg} />}
             {tab === 'games' && <GamesTab games={games} teams={teams} onRefresh={loadAll} setMsg={setMsg} />}
             {tab === 'futures' && <FuturesTab futures={futures} onRefresh={loadAll} setMsg={setMsg} />}
-            {tab === 'props' && <PropsTab props={props} onRefresh={loadAll} setMsg={setMsg} />}
+            {tab === 'props' && <PropsTab props={props} teams={teams} onRefresh={loadAll} setMsg={setMsg} />}
             {tab === 'users' && <UsersTab users={users} onRefresh={loadAll} setMsg={setMsg} />}
             {tab === 'bets' && <BetsTab bets={allBets} parlays={allParlays} />}
             {tab === 'settle' && <SettleTab games={games} futures={futures} props={props} onRefresh={loadAll} setMsg={setMsg} />}
@@ -316,7 +316,9 @@ function FuturesTab({ futures, onRefresh, setMsg }: { futures: Future[]; onRefre
 }
 
 // Props Tab
-function PropsTab({ props, onRefresh, setMsg }: { props: Prop[]; onRefresh: () => void; setMsg: (m: string) => void }) {
+function PropsTab({ props, teams, onRefresh, setMsg }: { props: Prop[]; teams: Team[]; onRefresh: () => void; setMsg: (m: string) => void }) {
+  const [assigningTeam, setAssigningTeam] = useState<string | null>(null)
+
   const settle = async (p: Prop, result: 'selection_won' | 'counter_won') => {
     const { error } = await supabase
       .from('props')
@@ -326,11 +328,45 @@ function PropsTab({ props, onRefresh, setMsg }: { props: Prop[]; onRefresh: () =
     else { setMsg('✓ Prop settled'); onRefresh() }
   }
 
+  const assignTeam = async (p: Prop, teamId: string) => {
+    const { error } = await supabase
+      .from('props')
+      .update({ team_id: teamId || null })
+      .eq('id', p.id)
+    if (error) setMsg(error.message)
+    else { setMsg('✓ Team assigned'); setAssigningTeam(null); onRefresh() }
+  }
+
   return (
     <div className="space-y-4">
       {props.map(p => (
         <div key={p.id} className={`card p-4 ${p.result ? 'opacity-60' : ''}`}>
-          <p className="font-medium mb-2">{p.description}</p>
+          <div className="flex items-start justify-between mb-2 gap-2">
+            <p className="font-medium">{p.description}</p>
+            {/* Team tag / assign */}
+            {assigningTeam === p.id ? (
+              <div className="flex gap-1 shrink-0">
+                <select
+                  defaultValue={p.team_id || ''}
+                  onChange={e => assignTeam(p, e.target.value)}
+                  className="px-2 py-1 bg-bg-primary border border-border-subtle rounded text-sm"
+                >
+                  <option value="">No team</option>
+                  {teams.map(t => (
+                    <option key={t.id} value={t.id}>{t.logo_emoji} {t.abbreviation}</option>
+                  ))}
+                </select>
+                <button onClick={() => setAssigningTeam(null)} className="px-2 py-1 bg-bg-surface rounded text-sm">✕</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setAssigningTeam(p.id)}
+                className="text-xs px-2 py-1 bg-bg-surface border border-border-subtle rounded shrink-0 hover:border-accent-green"
+              >
+                {p.team_id ? `${teams.find(t => t.id === p.team_id)?.logo_emoji} ${teams.find(t => t.id === p.team_id)?.abbreviation}` : '+ Team'}
+              </button>
+            )}
+          </div>
           <div className="flex gap-2">
             <div className="flex-1 text-sm">
               <span>{p.selection_name}</span>
