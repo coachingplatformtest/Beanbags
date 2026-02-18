@@ -694,6 +694,14 @@ function SettleTab({ games, futures, props, onRefresh, setMsg }: { games: Game[]
   const settleAll = async () => {
     setSettling(true)
     try {
+      // Fetch everything fresh so we always have latest scores + prop results
+      const { data: freshGames } = await supabase
+        .from('games')
+        .select('*, home_team:teams!games_home_team_id_fkey(*), away_team:teams!games_away_team_id_fkey(*)')
+      const { data: freshProps } = await supabase.from('props').select('*')
+      const gamesList = (freshGames || []) as Game[]
+      const propsList = (freshProps || []) as Prop[]
+
       // Get pending bets
       const { data: bets } = await supabase.from('bets').select('*').eq('status', 'pending')
       const { data: parlays } = await supabase.from('parlay_bets').select('*, legs:parlay_legs(*)').eq('status', 'pending')
@@ -705,7 +713,7 @@ function SettleTab({ games, futures, props, onRefresh, setMsg }: { games: Game[]
         let result: 'won' | 'lost' | 'push' | null = null
         
         if (bet.game_id) {
-          const game = games.find(g => g.id === bet.game_id)
+          const game = gamesList.find(g => g.id === bet.game_id)
           if (!game || game.game_status !== 'final') continue
           
           if (bet.bet_type === 'spread') {
@@ -723,7 +731,7 @@ function SettleTab({ games, futures, props, onRefresh, setMsg }: { games: Game[]
           if (!future || !future.result) continue
           result = future.result === 'won' ? 'won' : 'lost'
         } else if (bet.prop_id) {
-          const prop = props.find(p => p.id === bet.prop_id)
+          const prop = propsList.find(p => p.id === bet.prop_id)
           if (!prop || !prop.result) continue
           const pickedSelection = bet.selection.includes(prop.selection_name)
           result = (pickedSelection && prop.result === 'selection_won') || (!pickedSelection && prop.result === 'counter_won') ? 'won' : 'lost'
@@ -765,7 +773,7 @@ function SettleTab({ games, futures, props, onRefresh, setMsg }: { games: Game[]
           let result: 'won' | 'lost' | 'push' | null = null
           
           if (leg.game_id) {
-            const game = games.find(g => g.id === leg.game_id)
+            const game = gamesList.find(g => g.id === leg.game_id)
             if (!game || game.game_status !== 'final') { allSettled = false; continue }
             
             if (leg.bet_type === 'spread') {
@@ -783,7 +791,7 @@ function SettleTab({ games, futures, props, onRefresh, setMsg }: { games: Game[]
             if (!future || !future.result) { allSettled = false; continue }
             result = future.result === 'won' ? 'won' : 'lost'
           } else if (leg.prop_id) {
-            const prop = props.find(p => p.id === leg.prop_id)
+            const prop = propsList.find(p => p.id === leg.prop_id)
             if (!prop || !prop.result) { allSettled = false; continue }
             const pickedSelection = leg.selection.includes(prop.selection_name)
             result = (pickedSelection && prop.result === 'selection_won') || (!pickedSelection && prop.result === 'counter_won') ? 'won' : 'lost'
