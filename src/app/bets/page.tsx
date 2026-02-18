@@ -28,15 +28,15 @@ export default function BetsPage() {
     try {
       const { data: betsData } = await supabase
         .from('bets')
-        .select('*')
+        .select('*, game:games(week), prop:props(week)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
       
-      if (betsData) setBets(betsData as Bet[])
+      if (betsData) setBets(betsData as any)
       
       const { data: parlaysData } = await supabase
         .from('parlay_bets')
-        .select('*, legs:parlay_legs(*)')
+        .select('*, legs:parlay_legs(*, game:games(week), prop:props(week))')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
       
@@ -46,6 +46,19 @@ export default function BetsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const getBetLabel = (bet: any) => {
+    if ((bet as any).game?.week) return `2030 Week ${(bet as any).game.week}`
+    if ((bet as any).prop?.week) return `2030 Week ${(bet as any).prop.week}`
+    if (bet.future_id) return '2030 Season'
+    return ''
+  }
+
+  const getParlayLabel = (parlay: any) => {
+    const leg = (parlay.legs || []).find((l: any) => l.game?.week || l.prop?.week)
+    const week = leg?.game?.week || leg?.prop?.week
+    return week ? `2030 Week ${week}` : ''
   }
 
   const filteredBets = bets.filter(b => {
@@ -133,9 +146,9 @@ export default function BetsPage() {
                           {parlay.legs?.length}-LEG PARLAY
                         </span>
                       </div>
-                      <span className="text-xs text-text-secondary">
-                        {new Date(parlay.created_at).toLocaleDateString()}
-                      </span>
+                      {getParlayLabel(parlay) && (
+                        <span className="text-xs text-text-secondary">{getParlayLabel(parlay)}</span>
+                      )}
                     </div>
                     <div className="p-4 space-y-2">
                       {parlay.legs?.map(leg => (
@@ -171,9 +184,9 @@ export default function BetsPage() {
                   <div key={bet.id} className="card p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className={`badge badge-${bet.status}`}>{bet.status}</span>
-                      <span className="text-xs text-text-secondary">
-                        {new Date(bet.created_at).toLocaleDateString()}
-                      </span>
+                      {getBetLabel(bet) && (
+                        <span className="text-xs text-text-secondary">{getBetLabel(bet)}</span>
+                      )}
                     </div>
                     <p className="font-medium mb-1">{bet.selection}</p>
                     <div className="flex justify-between text-sm text-text-secondary">

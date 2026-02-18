@@ -44,8 +44,8 @@ export default function LeaderboardPage() {
     setLoadingBets(true)
     try {
       const [betsRes, parlaysRes] = await Promise.all([
-        supabase.from('bets').select('*').eq('user_id', entry.user_id).order('created_at', { ascending: false }),
-        supabase.from('parlay_bets').select('*, legs:parlay_legs(*)').eq('user_id', entry.user_id).order('created_at', { ascending: false }),
+        supabase.from('bets').select('*, game:games(week), prop:props(week)').eq('user_id', entry.user_id).order('created_at', { ascending: false }),
+        supabase.from('parlay_bets').select('*, legs:parlay_legs(*, game:games(week), prop:props(week))').eq('user_id', entry.user_id).order('created_at', { ascending: false }),
       ])
       if (betsRes.data) setUserBets(betsRes.data)
       if (parlaysRes.data) setUserParlays(parlaysRes.data)
@@ -68,6 +68,19 @@ export default function LeaderboardPage() {
     if (rank === 2) return '🥈'
     if (rank === 3) return '🥉'
     return `#${rank}`
+  }
+
+  const getBetLabel = (bet: any) => {
+    if (bet.game?.week) return `2030 Week ${bet.game.week}`
+    if (bet.prop?.week) return `2030 Week ${bet.prop.week}`
+    if (bet.future_id) return '2030 Season'
+    return ''
+  }
+
+  const getParlayLabel = (parlay: any) => {
+    const leg = (parlay.legs || []).find((l: any) => l.game?.week || l.prop?.week)
+    const week = leg?.game?.week || leg?.prop?.week
+    return week ? `2030 Week ${week}` : ''
   }
 
   const statusColor = (s: string) => {
@@ -239,6 +252,9 @@ export default function LeaderboardPage() {
                           <span className="text-accent-gold text-xs font-bold">
                             {parlay.legs?.length}-LEG PARLAY
                           </span>
+                          {getParlayLabel(parlay) && (
+                            <span className="text-xs text-text-secondary">{getParlayLabel(parlay)}</span>
+                          )}
                         </div>
                         <span className="text-xs text-text-secondary">
                           {formatUnits(parlay.units_wagered)}u → <span className="text-accent-green">+{formatUnits(parlay.potential_payout - parlay.units_wagered)}u</span>
@@ -273,7 +289,12 @@ export default function LeaderboardPage() {
                   {userBets.map((bet: any) => (
                     <div key={bet.id} className="card p-3">
                       <div className="flex items-center justify-between mb-1">
-                        <span className={`badge badge-${bet.status}`}>{bet.status}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`badge badge-${bet.status}`}>{bet.status}</span>
+                          {getBetLabel(bet) && (
+                            <span className="text-xs text-text-secondary">{getBetLabel(bet)}</span>
+                          )}
+                        </div>
                         <span className="text-xs text-text-secondary">
                           {formatUnits(bet.units_wagered)}u @ {formatOdds(bet.odds)}
                         </span>
