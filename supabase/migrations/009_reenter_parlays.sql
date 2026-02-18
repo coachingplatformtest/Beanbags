@@ -35,7 +35,7 @@ BEGIN
 
   -- Scotty: 4-leg, 5u, payout 73.2
   INSERT INTO parlay_bets (user_id, units_wagered, total_odds, potential_payout, status)
-  VALUES (scotty_id, 5, 1364, 73.2) RETURNING id INTO scotty_parlay;
+  VALUES (scotty_id, 5, 1364, 73.2, 'pending') RETURNING id INTO scotty_parlay;
 
   INSERT INTO parlay_legs (parlay_id, bet_type, game_id, prop_id, selection, odds) VALUES
     (scotty_parlay, 'moneyline', fsu_nd_game, NULL,         'Florida State ML',                              195),
@@ -45,7 +45,7 @@ BEGIN
 
   -- Hunt: 3-leg, 5u, payout 21.5
   INSERT INTO parlay_bets (user_id, units_wagered, total_odds, potential_payout, status)
-  VALUES (hunt_id, 5, 330, 21.5) RETURNING id INTO hunt_parlay;
+  VALUES (hunt_id, 5, 330, 21.5, 'pending') RETURNING id INTO hunt_parlay;
 
   INSERT INTO parlay_legs (parlay_id, bet_type, game_id, prop_id, selection, odds) VALUES
     (hunt_parlay, 'spread', fsu_nd_game, NULL,        'Florida State +6.5',                           -110),
@@ -54,7 +54,7 @@ BEGIN
 
   -- Cole: 3-leg, 5u, payout 53.76
   INSERT INTO parlay_bets (user_id, units_wagered, total_odds, potential_payout, status)
-  VALUES (cole_id, 5, 975, 53.76) RETURNING id INTO cole_parlay;
+  VALUES (cole_id, 5, 975, 53.76, 'pending') RETURNING id INTO cole_parlay;
 
   INSERT INTO parlay_legs (parlay_id, bet_type, game_id, prop_id, selection, odds) VALUES
     (cole_parlay, 'moneyline', fsu_nd_game, NULL,       'Florida State ML',                            195),
