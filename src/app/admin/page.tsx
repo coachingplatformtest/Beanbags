@@ -838,6 +838,67 @@ function SettleTab({ games, futures, props, onRefresh, setMsg }: { games: Game[]
     setSettling(false)
   }
 
+  const [diagLines, setDiagLines] = useState<string[]>([])
+  const [diagRunning, setDiagRunning] = useState(false)
+
+  const runDiagnose = async () => {
+    setDiagRunning(true)
+    const lines: string[] = []
+    try {
+      const { data: freshGames } = await supabase.from('games').select('*')
+      const { data: freshTeams } = await supabase.from('teams').select('*')
+      const { data: freshProps } = await supabase.from('props').select('*')
+      const { data: bets } = await supabase.from('bets').select('*').eq('status', 'pending')
+      const { data: parlays } = await supabase.from('parlay_bets').select('*, legs:parlay_legs(*)').eq('status', 'pending')
+
+      const teamById: Record<string, any> = {}
+      for (const t of (freshTeams || [])) teamById[t.id] = t
+
+      lines.push(`Games loaded: ${freshGames?.length ?? 0}`)
+      lines.push(`Teams loaded: ${freshTeams?.length ?? 0}`)
+      lines.push(`Props loaded: ${freshProps?.length ?? 0}`)
+      lines.push(`Pending straight bets: ${bets?.length ?? 0}`)
+      lines.push(`Pending parlays: ${parlays?.length ?? 0}`)
+      lines.push('---')
+
+      const finalGames = (freshGames || []).filter((g: any) => g.game_status === 'final')
+      lines.push(`Final games: ${finalGames.length}`)
+      for (const g of finalGames) {
+        const home = teamById[g.home_team_id]?.short_name ?? g.home_team_id
+        const away = teamById[g.away_team_id]?.short_name ?? g.away_team_id
+        lines.push(`  ✓ ${away} @ ${home} — ${g.away_score}-${g.home_score}`)
+      }
+
+      const settledProps = (freshProps || []).filter((p: any) => p.result)
+      lines.push(`Props with results: ${settledProps.length}`)
+      for (const p of settledProps) {
+        lines.push(`  ✓ ${p.description}: ${p.result}`)
+      }
+      lines.push('---')
+
+      for (const parlay of (parlays || [])) {
+        lines.push(`Parlay (user ${parlay.user_id.slice(0,8)}...) ${(parlay.legs || []).length} legs:`)
+        for (const leg of (parlay.legs || [])) {
+          if (leg.game_id) {
+            const game = (freshGames || []).find((g: any) => g.id === leg.game_id)
+            if (!game) { lines.push(`  ✗ leg "${leg.selection}" — game NOT FOUND`); continue }
+            if (game.game_status !== 'final') { lines.push(`  ✗ leg "${leg.selection}" — game status: ${game.game_status}`); continue }
+            lines.push(`  ✓ leg "${leg.selection}" — game final`)
+          } else if (leg.prop_id) {
+            const prop = (freshProps || []).find((p: any) => p.id === leg.prop_id)
+            if (!prop) { lines.push(`  ✗ leg "${leg.selection}" — prop NOT FOUND`); continue }
+            if (!prop.result) { lines.push(`  ✗ leg "${leg.selection}" — prop has no result yet`); continue }
+            lines.push(`  ✓ leg "${leg.selection}" — prop result: ${prop.result}`)
+          }
+        }
+      }
+    } catch (e: any) {
+      lines.push(`ERROR: ${e.message}`)
+    }
+    setDiagLines(lines)
+    setDiagRunning(false)
+  }
+
   const readyGames = games.filter(g => g.game_status === 'final')
   const settledFutures = futures.filter(f => f.result)
 
@@ -859,14 +920,33 @@ function SettleTab({ games, futures, props, onRefresh, setMsg }: { games: Game[]
         <p className="text-text-secondary mb-4">
           Evaluates all pending bets against final game scores and settled futures/props.
         </p>
-        <button
-          onClick={settleAll}
-          disabled={settling}
-          className="px-6 py-3 bg-accent-green text-bg-primary font-bold rounded-lg disabled:opacity-50"
-        >
-          {settling ? 'Settling...' : 'Settle Bets'}
-        </button>
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={runDiagnose}
+            disabled={diagRunning}
+            className="px-6 py-3 bg-bg-surface border border-border-subtle font-bold rounded-lg hover:border-accent-gold disabled:opacity-50"
+          >
+            {diagRunning ? 'Checking...' : '🔍 Diagnose'}
+          </button>
+          <button
+            onClick={settleAll}
+            disabled={settling}
+            className="px-6 py-3 bg-accent-green text-bg-primary font-bold rounded-lg disabled:opacity-50"
+          >
+            {settling ? 'Settling...' : 'Settle Bets'}
+          </button>
+        </div>
       </div>
+
+      {diagLines.length > 0 && (
+        <div className="card p-4 font-mono text-xs space-y-1">
+          {diagLines.map((l, i) => (
+            <div key={i} className={l.startsWith('  ✓') ? 'text-accent-green' : l.startsWith('  ✗') ? 'text-accent-red' : l === '---' ? 'border-t border-border-subtle pt-1 mt-1' : 'text-text-secondary'}>
+              {l}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
