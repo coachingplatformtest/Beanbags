@@ -780,6 +780,11 @@ function SettleTab({ games, futures, props, onRefresh, setMsg }: { games: Game[]
             const future = futures.find(f => f.id === leg.future_id)
             if (!future || !future.result) { allSettled = false; continue }
             result = future.result === 'won' ? 'won' : 'lost'
+          } else if (leg.prop_id) {
+            const prop = props.find(p => p.id === leg.prop_id)
+            if (!prop || !prop.result) { allSettled = false; continue }
+            const pickedSelection = leg.selection.includes(prop.selection_name)
+            result = (pickedSelection && prop.result === 'selection_won') || (!pickedSelection && prop.result === 'counter_won') ? 'won' : 'lost'
           }
 
           if (result) {
