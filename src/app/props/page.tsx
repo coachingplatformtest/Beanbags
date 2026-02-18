@@ -11,9 +11,10 @@ import { canBetProp } from '@/lib/user-teams'
 import type { Prop } from '@/types'
 
 export default function PropsPage() {
-  const { user, addToSlip, removeFromSlip, isInSlip, betSlip } = useStore()
+  const { user, addToSlip, removeFromSlip, isInSlip, betSlip, slateStatus } = useStore()
   const [props, setProps] = useState<Prop[]>([])
   const [loading, setLoading] = useState(true)
+  const bettingOpen = slateStatus === 'open'
   const canAdd = betSlip.length < 5
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function PropsPage() {
       removeFromSlip(id)
       return
     }
-    if (!canAdd) return
+    if (!canAdd || !bettingOpen) return
     const odds = side === 'selection' ? prop.odds : prop.counter_odds!
     const sel = side === 'selection' ? prop.selection_name : prop.counter_selection!
     addToSlip({
@@ -77,6 +78,14 @@ export default function PropsPage() {
       
       <main className="max-w-4xl mx-auto px-4 py-6">
         <h1 className="font-heading text-3xl font-bold mb-6">PROPS</h1>
+
+        {!bettingOpen && (
+          <div className="mb-4 p-3 rounded-lg bg-accent-red/10 border border-accent-red/30 text-center">
+            <p className="text-accent-red font-heading font-bold text-sm">
+              🔒 BETTING {slateStatus === 'settled' ? 'CLOSED — WEEK SETTLED' : 'LOCKED — LINES ARE SET'}
+            </p>
+          </div>
+        )}
 
         {!user && (
           <div className="max-w-xl mb-6">
@@ -130,30 +139,30 @@ export default function PropsPage() {
                   <div className="flex gap-3">
                     <button
                       onClick={() => toggleProp(prop, 'selection')}
-                      disabled={!allowed || (!canAdd && !selSelected)}
+                      disabled={!allowed || !bettingOpen || (!canAdd && !selSelected)}
                       className={`flex-1 py-3 rounded-lg border transition ${
-                        selSelected 
-                          ? 'bg-accent-green text-bg-primary border-accent-green' 
-                          : !allowed
+                        selSelected
+                          ? 'bg-accent-green text-bg-primary border-accent-green'
+                          : !allowed || !bettingOpen
                           ? 'bg-bg-surface border-border-subtle opacity-40 cursor-not-allowed'
                           : 'bg-bg-surface border-border-subtle hover:border-accent-green'
-                      } ${!canAdd && !selSelected && allowed ? 'opacity-50' : ''}`}
+                      } ${!canAdd && !selSelected && allowed && bettingOpen ? 'opacity-50' : ''}`}
                     >
                       <p className="text-sm">{prop.selection_name}</p>
                       <p className="font-heading font-bold">{formatOdds(prop.odds)}</p>
                     </button>
-                    
+
                     {prop.counter_selection && (
                       <button
                         onClick={() => toggleProp(prop, 'counter')}
-                        disabled={!allowed || (!canAdd && !counterSelected)}
+                        disabled={!allowed || !bettingOpen || (!canAdd && !counterSelected)}
                         className={`flex-1 py-3 rounded-lg border transition ${
-                          counterSelected 
-                            ? 'bg-accent-green text-bg-primary border-accent-green' 
-                            : !allowed
+                          counterSelected
+                            ? 'bg-accent-green text-bg-primary border-accent-green'
+                            : !allowed || !bettingOpen
                             ? 'bg-bg-surface border-border-subtle opacity-40 cursor-not-allowed'
                             : 'bg-bg-surface border-border-subtle hover:border-accent-green'
-                        } ${!canAdd && !counterSelected && allowed ? 'opacity-50' : ''}`}
+                        } ${!canAdd && !counterSelected && allowed && bettingOpen ? 'opacity-50' : ''}`}
                       >
                         <p className="text-sm">{prop.counter_selection}</p>
                         <p className="font-heading font-bold">{formatOdds(prop.counter_odds!)}</p>
