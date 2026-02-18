@@ -315,7 +315,7 @@ function FuturesTab({ futures, onRefresh, setMsg }: { futures: Future[]; onRefre
   )
 }
 
-// Props Tab
+// Props Tab — grouped by team → player (mirrors user-facing props page)
 function PropsTab({ props, teams, games, onRefresh, setMsg }: { props: Prop[]; teams: Team[]; games: Game[]; onRefresh: () => void; setMsg: (m: string) => void }) {
   const [editing, setEditing] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ description: '', position: '', game_id: '', team_id: '' })
@@ -355,133 +355,171 @@ function PropsTab({ props, teams, games, onRefresh, setMsg }: { props: Prop[]; t
 
   const userGames = games.filter(g => g.is_user_game)
 
+  // Group by team → player (same logic as user props page)
+  const pName = (desc: string) => desc.split(' ').slice(0, 2).join(' ')
+  const playerProps = props.filter(p => p.category !== 'season_win_total')
+
+  const teamOrder: string[] = []
+  const teamMap: Record<string, { team: any; players: Record<string, Prop[]> }> = {}
+  for (const prop of playerProps) {
+    const tName = (prop as any).team?.short_name ?? 'Other'
+    if (!teamMap[tName]) { teamMap[tName] = { team: (prop as any).team, players: {} }; teamOrder.push(tName) }
+    const name = pName(prop.description)
+    if (!teamMap[tName].players[name]) teamMap[tName].players[name] = []
+    teamMap[tName].players[name].push(prop)
+  }
+  const grouped = teamOrder.map(t => ({ teamName: t, ...teamMap[t] }))
+
+  if (grouped.length === 0) {
+    return <div className="text-center py-12 text-text-secondary">No props yet</div>
+  }
+
   return (
-    <div className="space-y-4">
-      {props.map(p => (
-        <div key={p.id} className={`card p-4 ${p.result ? 'opacity-60' : ''}`}>
-          {/* Header row */}
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="min-w-0">
-              <p className="font-heading font-bold truncate">{p.description}</p>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {p.team && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-bg-surface border border-border-subtle">
-                    {p.team.logo_emoji} {p.team.short_name}
-                  </span>
-                )}
-                {p.position && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-bg-surface text-accent-gold border border-accent-gold/40 font-bold">
-                    {p.position}
-                  </span>
-                )}
-                {p.game && (
-                  <span className="text-xs text-text-secondary">
-                    {p.game.away_team?.abbreviation} @ {p.game.home_team?.abbreviation} • Wk {p.week}
-                  </span>
-                )}
-              </div>
-            </div>
-            {!p.result && (
-              <button
-                onClick={() => editing === p.id ? setEditing(null) : startEdit(p)}
-                className="text-xs px-2 py-1 bg-bg-surface border border-border-subtle rounded shrink-0 hover:border-accent-green"
-              >
-                {editing === p.id ? '✕ Cancel' : '✏️ Edit'}
-              </button>
-            )}
+    <div className="space-y-8">
+      {grouped.map(({ teamName, team, players }) => (
+        <div key={teamName}>
+          {/* Team header */}
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-2xl">{team?.logo_emoji}</span>
+            <h2 className="font-heading text-xl font-bold">{team?.short_name ?? teamName}</h2>
           </div>
 
-          {/* Edit form */}
-          {editing === p.id && (
-            <div className="mb-3 p-3 bg-bg-surface rounded-lg space-y-2">
-              <div>
-                <label className="text-xs text-text-secondary">Full Name / Description</label>
-                <input
-                  value={editForm.description}
-                  onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
-                  className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
-                  placeholder="e.g. Peter Mauldin Passing Yards"
-                />
-              </div>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="text-xs text-text-secondary">Position</label>
-                  <input
-                    value={editForm.position}
-                    onChange={e => setEditForm(f => ({ ...f, position: e.target.value }))}
-                    className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
-                    placeholder="QB / RB / WR"
-                  />
+          <div className="space-y-6 pl-2">
+            {Object.entries(players).map(([playerName, pProps]) => (
+              <div key={playerName}>
+                {/* Player header */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-accent-gold uppercase tracking-wider">{playerName}</span>
+                  {pProps[0]?.position && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-bg-surface text-accent-gold border border-accent-gold/40 font-bold">
+                      {pProps[0].position}
+                    </span>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <label className="text-xs text-text-secondary">Team</label>
-                  <select
-                    value={editForm.team_id}
-                    onChange={e => setEditForm(f => ({ ...f, team_id: e.target.value }))}
-                    className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
-                  >
-                    <option value="">No team</option>
-                    {teams.map(t => (
-                      <option key={t.id} value={t.id}>{t.logo_emoji} {t.short_name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-text-secondary">Game</label>
-                <select
-                  value={editForm.game_id}
-                  onChange={e => setEditForm(f => ({ ...f, game_id: e.target.value }))}
-                  className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
-                >
-                  <option value="">No game</option>
-                  {userGames.map(g => (
-                    <option key={g.id} value={g.id}>
-                      Wk {g.week}: {g.away_team?.abbreviation} @ {g.home_team?.abbreviation}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button
-                onClick={() => saveEdit(p)}
-                className="w-full py-1.5 bg-accent-green text-bg-primary font-bold rounded text-sm"
-              >
-                Save
-              </button>
-            </div>
-          )}
 
-          {/* Odds display */}
-          <div className="flex gap-2 text-sm">
-            <div className="flex-1">
-              <span className="text-text-secondary">{p.selection_name}</span>
-              <span className="ml-2 font-heading">{formatOdds(p.odds)}</span>
-            </div>
-            {p.counter_selection && (
-              <div className="flex-1">
-                <span className="text-text-secondary">{p.counter_selection}</span>
-                <span className="ml-2 font-heading">{formatOdds(p.counter_odds!)}</span>
+                <div className="space-y-2">
+                  {pProps.map(p => {
+                    const statLabel = p.description.split(' ').slice(2).join(' ')
+                    return (
+                      <div key={p.id} className={`card p-4 ${p.result ? 'opacity-60' : ''}`}>
+                        {/* Header row */}
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="min-w-0">
+                            <p className="font-medium">{statLabel}</p>
+                            {(p as any).game && (
+                              <p className="text-xs text-text-secondary mt-0.5">
+                                {(p as any).game.away_team?.abbreviation} @ {(p as any).game.home_team?.abbreviation} • Wk {p.week}
+                              </p>
+                            )}
+                          </div>
+                          {!p.result && (
+                            <button
+                              onClick={() => editing === p.id ? setEditing(null) : startEdit(p)}
+                              className="text-xs px-2 py-1 bg-bg-surface border border-border-subtle rounded shrink-0 hover:border-accent-green"
+                            >
+                              {editing === p.id ? '✕ Cancel' : '✏️ Edit'}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Edit form */}
+                        {editing === p.id && (
+                          <div className="mb-3 p-3 bg-bg-surface rounded-lg space-y-2">
+                            <div>
+                              <label className="text-xs text-text-secondary">Full Name / Description</label>
+                              <input
+                                value={editForm.description}
+                                onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                                className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                                placeholder="e.g. Peter Mauldin Passing Yards"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <label className="text-xs text-text-secondary">Position</label>
+                                <input
+                                  value={editForm.position}
+                                  onChange={e => setEditForm(f => ({ ...f, position: e.target.value }))}
+                                  className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                                  placeholder="QB / RB / WR"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <label className="text-xs text-text-secondary">Team</label>
+                                <select
+                                  value={editForm.team_id}
+                                  onChange={e => setEditForm(f => ({ ...f, team_id: e.target.value }))}
+                                  className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                                >
+                                  <option value="">No team</option>
+                                  {teams.map(t => (
+                                    <option key={t.id} value={t.id}>{t.logo_emoji} {t.short_name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs text-text-secondary">Game</label>
+                              <select
+                                value={editForm.game_id}
+                                onChange={e => setEditForm(f => ({ ...f, game_id: e.target.value }))}
+                                className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                              >
+                                <option value="">No game</option>
+                                {userGames.map(g => (
+                                  <option key={g.id} value={g.id}>
+                                    Wk {g.week}: {g.away_team?.abbreviation} @ {g.home_team?.abbreviation}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <button
+                              onClick={() => saveEdit(p)}
+                              className="w-full py-1.5 bg-accent-green text-bg-primary font-bold rounded text-sm"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Odds display */}
+                        <div className="flex gap-2 text-sm">
+                          <div className="flex-1">
+                            <span className="text-text-secondary">{p.selection_name}</span>
+                            <span className="ml-2 font-heading">{formatOdds(p.odds)}</span>
+                          </div>
+                          {p.counter_selection && (
+                            <div className="flex-1">
+                              <span className="text-text-secondary">{p.counter_selection}</span>
+                              <span className="ml-2 font-heading">{formatOdds(p.counter_odds!)}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Settle */}
+                        {p.result ? (
+                          <span className={`badge mt-2 ${p.result === 'selection_won' ? 'badge-won' : 'badge-lost'}`}>
+                            {p.result === 'selection_won' ? p.selection_name : p.counter_selection} won
+                          </span>
+                        ) : (
+                          <div className="flex gap-2 mt-3">
+                            <button onClick={() => settle(p, 'selection_won')} className="px-3 py-1 bg-accent-green/20 text-accent-green rounded text-sm">
+                              {p.selection_name} Won
+                            </button>
+                            {p.counter_selection && (
+                              <button onClick={() => settle(p, 'counter_won')} className="px-3 py-1 bg-accent-green/20 text-accent-green rounded text-sm">
+                                {p.counter_selection} Won
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            )}
+            ))}
           </div>
-
-          {/* Settle */}
-          {p.result ? (
-            <span className={`badge mt-2 ${p.result === 'selection_won' ? 'badge-won' : 'badge-lost'}`}>
-              {p.result === 'selection_won' ? p.selection_name : p.counter_selection} won
-            </span>
-          ) : (
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => settle(p, 'selection_won')} className="px-3 py-1 bg-accent-green/20 text-accent-green rounded text-sm">
-                {p.selection_name} Won
-              </button>
-              {p.counter_selection && (
-                <button onClick={() => settle(p, 'counter_won')} className="px-3 py-1 bg-accent-green/20 text-accent-green rounded text-sm">
-                  {p.counter_selection} Won
-                </button>
-              )}
-            </div>
-          )}
         </div>
       ))}
     </div>
