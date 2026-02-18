@@ -40,7 +40,7 @@ export default function AdminPage() {
         supabase.from('teams').select('*').order('short_name'),
         supabase.from('games').select('*, home_team:teams!games_home_team_id_fkey(*), away_team:teams!games_away_team_id_fkey(*)').order('week'),
         supabase.from('futures').select('*').order('odds_numeric'),
-        supabase.from('props').select('*').order('created_at', { ascending: false }),
+        supabase.from('props').select('*, team:teams(*), game:games(*, home_team:teams!games_home_team_id_fkey(*), away_team:teams!games_away_team_id_fkey(*))').order('created_at', { ascending: false }),
         supabase.from('users').select('*').order('units_remaining', { ascending: false }),
         supabase.from('bets').select('*, user:users(name)').order('created_at', { ascending: false }),
         supabase.from('parlay_bets').select('*, user:users(name), legs:parlay_legs(*)').order('created_at', { ascending: false }),
@@ -131,7 +131,7 @@ export default function AdminPage() {
             {tab === 'slate' && <SlateTab slate={slate} onRefresh={loadAll} setMsg={setMsg} />}
             {tab === 'games' && <GamesTab games={games} teams={teams} onRefresh={loadAll} setMsg={setMsg} />}
             {tab === 'futures' && <FuturesTab futures={futures} onRefresh={loadAll} setMsg={setMsg} />}
-            {tab === 'props' && <PropsTab props={props} teams={teams} onRefresh={loadAll} setMsg={setMsg} />}
+            {tab === 'props' && <PropsTab props={props} teams={teams} games={games} onRefresh={loadAll} setMsg={setMsg} />}
             {tab === 'users' && <UsersTab users={users} onRefresh={loadAll} setMsg={setMsg} />}
             {tab === 'bets' && <BetsTab bets={allBets} parlays={allParlays} />}
             {tab === 'settle' && <SettleTab games={games} futures={futures} props={props} onRefresh={loadAll} setMsg={setMsg} />}
@@ -316,8 +316,33 @@ function FuturesTab({ futures, onRefresh, setMsg }: { futures: Future[]; onRefre
 }
 
 // Props Tab
-function PropsTab({ props, teams, onRefresh, setMsg }: { props: Prop[]; teams: Team[]; onRefresh: () => void; setMsg: (m: string) => void }) {
-  const [assigningTeam, setAssigningTeam] = useState<string | null>(null)
+function PropsTab({ props, teams, games, onRefresh, setMsg }: { props: Prop[]; teams: Team[]; games: Game[]; onRefresh: () => void; setMsg: (m: string) => void }) {
+  const [editing, setEditing] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ description: '', position: '', game_id: '', team_id: '' })
+
+  const startEdit = (p: Prop) => {
+    setEditForm({
+      description: p.description || '',
+      position: p.position || '',
+      game_id: p.game_id || '',
+      team_id: p.team_id || '',
+    })
+    setEditing(p.id)
+  }
+
+  const saveEdit = async (p: Prop) => {
+    const { error } = await supabase
+      .from('props')
+      .update({
+        description: editForm.description || p.description,
+        position: editForm.position || null,
+        game_id: editForm.game_id || null,
+        team_id: editForm.team_id || null,
+      })
+      .eq('id', p.id)
+    if (error) setMsg(error.message)
+    else { setMsg('✓ Prop updated'); setEditing(null); onRefresh() }
+  }
 
   const settle = async (p: Prop, result: 'selection_won' | 'counter_won') => {
     const { error } = await supabase
@@ -328,57 +353,119 @@ function PropsTab({ props, teams, onRefresh, setMsg }: { props: Prop[]; teams: T
     else { setMsg('✓ Prop settled'); onRefresh() }
   }
 
-  const assignTeam = async (p: Prop, teamId: string) => {
-    const { error } = await supabase
-      .from('props')
-      .update({ team_id: teamId || null })
-      .eq('id', p.id)
-    if (error) setMsg(error.message)
-    else { setMsg('✓ Team assigned'); setAssigningTeam(null); onRefresh() }
-  }
+  const userGames = games.filter(g => g.is_user_game)
 
   return (
     <div className="space-y-4">
       {props.map(p => (
         <div key={p.id} className={`card p-4 ${p.result ? 'opacity-60' : ''}`}>
-          <div className="flex items-start justify-between mb-2 gap-2">
-            <p className="font-medium">{p.description}</p>
-            {/* Team tag / assign */}
-            {assigningTeam === p.id ? (
-              <div className="flex gap-1 shrink-0">
-                <select
-                  defaultValue={p.team_id || ''}
-                  onChange={e => assignTeam(p, e.target.value)}
-                  className="px-2 py-1 bg-bg-primary border border-border-subtle rounded text-sm"
-                >
-                  <option value="">No team</option>
-                  {teams.map(t => (
-                    <option key={t.id} value={t.id}>{t.logo_emoji} {t.abbreviation}</option>
-                  ))}
-                </select>
-                <button onClick={() => setAssigningTeam(null)} className="px-2 py-1 bg-bg-surface rounded text-sm">✕</button>
+          {/* Header row */}
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="min-w-0">
+              <p className="font-heading font-bold truncate">{p.description}</p>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {p.team && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-bg-surface border border-border-subtle">
+                    {p.team.logo_emoji} {p.team.short_name}
+                  </span>
+                )}
+                {p.position && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-bg-surface text-accent-gold border border-accent-gold/40 font-bold">
+                    {p.position}
+                  </span>
+                )}
+                {p.game && (
+                  <span className="text-xs text-text-secondary">
+                    {p.game.away_team?.abbreviation} @ {p.game.home_team?.abbreviation} • Wk {p.week}
+                  </span>
+                )}
               </div>
-            ) : (
+            </div>
+            {!p.result && (
               <button
-                onClick={() => setAssigningTeam(p.id)}
+                onClick={() => editing === p.id ? setEditing(null) : startEdit(p)}
                 className="text-xs px-2 py-1 bg-bg-surface border border-border-subtle rounded shrink-0 hover:border-accent-green"
               >
-                {p.team_id ? `${teams.find(t => t.id === p.team_id)?.logo_emoji} ${teams.find(t => t.id === p.team_id)?.abbreviation}` : '+ Team'}
+                {editing === p.id ? '✕ Cancel' : '✏️ Edit'}
               </button>
             )}
           </div>
-          <div className="flex gap-2">
-            <div className="flex-1 text-sm">
-              <span>{p.selection_name}</span>
+
+          {/* Edit form */}
+          {editing === p.id && (
+            <div className="mb-3 p-3 bg-bg-surface rounded-lg space-y-2">
+              <div>
+                <label className="text-xs text-text-secondary">Full Name / Description</label>
+                <input
+                  value={editForm.description}
+                  onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                  placeholder="e.g. Peter Mauldin Passing Yards"
+                />
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-xs text-text-secondary">Position</label>
+                  <input
+                    value={editForm.position}
+                    onChange={e => setEditForm(f => ({ ...f, position: e.target.value }))}
+                    className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                    placeholder="QB / RB / WR"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-text-secondary">Team</label>
+                  <select
+                    value={editForm.team_id}
+                    onChange={e => setEditForm(f => ({ ...f, team_id: e.target.value }))}
+                    className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                  >
+                    <option value="">No team</option>
+                    {teams.map(t => (
+                      <option key={t.id} value={t.id}>{t.logo_emoji} {t.short_name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary">Game</label>
+                <select
+                  value={editForm.game_id}
+                  onChange={e => setEditForm(f => ({ ...f, game_id: e.target.value }))}
+                  className="w-full px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                >
+                  <option value="">No game</option>
+                  {userGames.map(g => (
+                    <option key={g.id} value={g.id}>
+                      Wk {g.week}: {g.away_team?.abbreviation} @ {g.home_team?.abbreviation}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={() => saveEdit(p)}
+                className="w-full py-1.5 bg-accent-green text-bg-primary font-bold rounded text-sm"
+              >
+                Save
+              </button>
+            </div>
+          )}
+
+          {/* Odds display */}
+          <div className="flex gap-2 text-sm">
+            <div className="flex-1">
+              <span className="text-text-secondary">{p.selection_name}</span>
               <span className="ml-2 font-heading">{formatOdds(p.odds)}</span>
             </div>
             {p.counter_selection && (
-              <div className="flex-1 text-sm">
-                <span>{p.counter_selection}</span>
+              <div className="flex-1">
+                <span className="text-text-secondary">{p.counter_selection}</span>
                 <span className="ml-2 font-heading">{formatOdds(p.counter_odds!)}</span>
               </div>
             )}
           </div>
+
+          {/* Settle */}
           {p.result ? (
             <span className={`badge mt-2 ${p.result === 'selection_won' ? 'badge-won' : 'badge-lost'}`}>
               {p.result === 'selection_won' ? p.selection_name : p.counter_selection} won
