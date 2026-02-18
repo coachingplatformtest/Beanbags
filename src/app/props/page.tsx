@@ -105,8 +105,11 @@ export default function PropsPage() {
             {props.map(prop => {
               const selSelected = isInSlip(`prop-${prop.id}-selection`)
               const counterSelected = isInSlip(`prop-${prop.id}-counter`)
-              const propTeamShortName = prop.team?.short_name ?? null
-              const allowed = !user || canBetProp(user.name, propTeamShortName)
+              const allowed = !user || canBetProp(
+                user.name,
+                prop.game?.home_team?.short_name ?? null,
+                prop.game?.away_team?.short_name ?? null,
+              )
               
               return (
                 <div key={prop.id} className="card p-4">
@@ -131,7 +134,7 @@ export default function PropsPage() {
                     </div>
                     {!allowed && (
                       <p className="text-xs text-accent-red mt-1.5 font-medium">
-                        🚫 Can't bet your own team's props
+                        🚫 Can't bet props for your own game
                       </p>
                     )}
                   </div>

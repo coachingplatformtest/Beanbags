@@ -16,10 +16,22 @@ export function getUserTeam(userName: string): string | null {
   return USER_TEAM_MAP[userName.toLowerCase()] ?? null
 }
 
-/** Returns true if the user is allowed to bet on a prop belonging to propTeamShortName. */
-export function canBetProp(userName: string, propTeamShortName: string | null | undefined): boolean {
-  if (!propTeamShortName) return true // no team tag = unrestricted
+/**
+ * Returns true if the user is allowed to bet on a prop for a given game.
+ * Blocked if the user's team is either the home OR away team in that game.
+ * Props with no game attached are unrestricted.
+ */
+export function canBetProp(
+  userName: string,
+  gameHomeTeamShortName: string | null | undefined,
+  gameAwayTeamShortName: string | null | undefined,
+): boolean {
   const userTeam = getUserTeam(userName)
-  if (!userTeam) return true // unrestricted user
-  return userTeam.toLowerCase() !== propTeamShortName.toLowerCase()
+  if (!userTeam) return true // Cory and any unmapped user — unrestricted
+  if (!gameHomeTeamShortName && !gameAwayTeamShortName) return true // no game = unrestricted
+
+  const ut = userTeam.toLowerCase()
+  const home = (gameHomeTeamShortName ?? '').toLowerCase()
+  const away = (gameAwayTeamShortName ?? '').toLowerCase()
+  return ut !== home && ut !== away
 }
