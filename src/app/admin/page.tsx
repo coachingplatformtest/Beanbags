@@ -695,12 +695,14 @@ function SettleTab({ games, futures, props, onRefresh, setMsg }: { games: Game[]
     setSettling(true)
     try {
       // Fetch everything fresh so we always have latest scores + prop results
-      const { data: freshGames } = await supabase
-        .from('games')
-        .select('*, home_team:teams!games_home_team_id_fkey(*), away_team:teams!games_away_team_id_fkey(*)')
+      const { data: freshGames } = await supabase.from('games').select('*')
+      const { data: freshTeams } = await supabase.from('teams').select('*')
       const { data: freshProps } = await supabase.from('props').select('*')
       const gamesList = (freshGames || []) as Game[]
       const propsList = (freshProps || []) as Prop[]
+      // Build team lookup so we can resolve home/away team names without joins
+      const teamById: Record<string, Team> = {}
+      for (const t of (freshTeams || [])) teamById[t.id] = t as Team
 
       // Get pending bets
       const { data: bets } = await supabase.from('bets').select('*').eq('status', 'pending')
@@ -715,12 +717,13 @@ function SettleTab({ games, futures, props, onRefresh, setMsg }: { games: Game[]
         if (bet.game_id) {
           const game = gamesList.find(g => g.id === bet.game_id)
           if (!game || game.game_status !== 'final') continue
+          const homeShort = teamById[game.home_team_id]?.short_name || ''
           
           if (bet.bet_type === 'spread') {
-            const side = bet.selection.includes(game.home_team?.short_name || '') ? 'home' : 'away'
+            const side = bet.selection.includes(homeShort) ? 'home' : 'away'
             result = settleSpread(game.home_score!, game.away_score!, game.spread_line!, side)
           } else if (bet.bet_type === 'moneyline') {
-            const side = bet.selection.includes(game.home_team?.short_name || '') ? 'home' : 'away'
+            const side = bet.selection.includes(homeShort) ? 'home' : 'away'
             result = settleMoneyline(game.home_score!, game.away_score!, side)
           } else if (bet.bet_type === 'total') {
             const side = bet.selection.includes('O') ? 'over' : 'under'
@@ -775,12 +778,13 @@ function SettleTab({ games, futures, props, onRefresh, setMsg }: { games: Game[]
           if (leg.game_id) {
             const game = gamesList.find(g => g.id === leg.game_id)
             if (!game || game.game_status !== 'final') { allSettled = false; continue }
+            const homeShort = teamById[game.home_team_id]?.short_name || ''
             
             if (leg.bet_type === 'spread') {
-              const side = leg.selection.includes(game.home_team?.short_name || '') ? 'home' : 'away'
+              const side = leg.selection.includes(homeShort) ? 'home' : 'away'
               result = settleSpread(game.home_score!, game.away_score!, game.spread_line!, side)
             } else if (leg.bet_type === 'moneyline') {
-              const side = leg.selection.includes(game.home_team?.short_name || '') ? 'home' : 'away'
+              const side = leg.selection.includes(homeShort) ? 'home' : 'away'
               result = settleMoneyline(game.home_score!, game.away_score!, side)
             } else if (leg.bet_type === 'total') {
               const side = leg.selection.includes('O') ? 'over' : 'under'
