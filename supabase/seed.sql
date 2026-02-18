@@ -29,7 +29,7 @@ VALUES ('national_championship', 'Ceeps (CPU Teams)', NULL, '+3000', 3000, 'Any 
 INSERT INTO futures (category, selection_name, odds, odds_numeric, description) VALUES
 ('heisman', 'Nick Moncrief (CLEM QB)', '+125', 125, 'Clemson QB - Heisman favorite'),
 ('heisman', 'Zay Goings (PSU QB)', '+250', 250, 'Penn State QB - Elite signal caller'),
-('heisman', 'Peter Mauldin (FSU QB)', '+600', 600, 'Florida State QB - Explosive freshman'),
+('heisman', 'Peter Maudlin (FSU QB)', '+600', 600, 'Florida State QB - Explosive freshman'),
 ('heisman', 'Butta Bontana (OSU WR)', '+750', 750, 'Ohio State WR'),
 ('heisman', 'Rhemontae Juggs (OSU RB)', '+900', 900, 'Ohio State RB'),
 ('heisman', 'Jojo Binkin It (BUF QB)', '+1000', 1000, 'Buffalo QB'),
@@ -39,7 +39,10 @@ INSERT INTO futures (category, selection_name, odds, odds_numeric, description) 
 ('heisman', 'CJ Childress (FSU RB)', '+2000', 2000, 'Florida State RB'),
 ('heisman', 'Freedom Singhs (OSU QB)', '+2000', 2000, 'Ohio State QB'),
 ('heisman', 'Tobias Bishop (VT QB)', '+4000', 4000, 'Virginia Tech QB'),
-('heisman', 'JD N Co (BUF RB)', '+5000', 5000, 'Buffalo RB');
+('heisman', 'JD N Co (BUF RB)', '+5000', 5000, 'Buffalo RB'),
+('heisman', 'Victor Ezukanma (ND QB)', '+3500', 3500, 'Notre Dame QB'),
+('heisman', 'Cameron Daniel (ND RB)', '+6000', 6000, 'Notre Dame RB'),
+('heisman', 'Javon Wade (ND WR)', '+7500', 7500, 'Notre Dame WR');
 
 -- Win Total Props (stored as props with category = season_win_total)
 INSERT INTO props (category, description, selection_name, odds, counter_selection, counter_odds) VALUES

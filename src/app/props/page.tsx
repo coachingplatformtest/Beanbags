@@ -102,21 +102,26 @@ export default function PropsPage() {
               return (
                 <div key={prop.id} className="card p-4">
                   <div className="mb-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-heading font-bold">{prop.description}</p>
+                    <p className="font-heading font-bold text-base leading-tight">{prop.description}</p>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       {prop.team && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-bg-surface text-text-secondary border border-border-subtle">
-                          {prop.team.logo_emoji} {prop.team.abbreviation}
+                          {prop.team.logo_emoji} {prop.team.short_name}
+                        </span>
+                      )}
+                      {prop.position && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-bg-surface text-accent-gold border border-accent-gold/40 font-bold">
+                          {prop.position}
+                        </span>
+                      )}
+                      {prop.game && (
+                        <span className="text-xs text-text-secondary">
+                          {prop.game.away_team?.abbreviation} @ {prop.game.home_team?.abbreviation} • Wk {prop.week}
                         </span>
                       )}
                     </div>
-                    {prop.game && (
-                      <p className="text-xs text-text-secondary mt-1">
-                        {prop.game.away_team?.abbreviation} @ {prop.game.home_team?.abbreviation} • Week {prop.week}
-                      </p>
-                    )}
                     {!allowed && (
-                      <p className="text-xs text-accent-red mt-1 font-medium">
+                      <p className="text-xs text-accent-red mt-1.5 font-medium">
                         🚫 Can't bet your own team's props
                       </p>
                     )}

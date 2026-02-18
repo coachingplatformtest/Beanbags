@@ -74,6 +74,7 @@ export interface Prop {
   week: number | null
   category: string
   description: string
+  position: string | null
   selection_name: string
   odds: number
   counter_selection: string | null
