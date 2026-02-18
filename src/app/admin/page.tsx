@@ -192,8 +192,10 @@ function SlateTab({ slate, onRefresh, setMsg }: { slate: WeeklySlate | null; onR
 
 // Games Tab
 function GamesTab({ games, teams, onRefresh, setMsg }: { games: Game[]; teams: Team[]; onRefresh: () => void; setMsg: (m: string) => void }) {
-  const [editing, setEditing] = useState<Game | null>(null)
+  const [scoreEditing, setScoreEditing] = useState<string | null>(null)
+  const [lineEditing, setLineEditing] = useState<string | null>(null)
   const [scores, setScores] = useState({ home: '', away: '' })
+  const [lines, setLines] = useState({ spread: '', total: '', ml_home: '', ml_away: '' })
 
   const enterScores = async (game: Game) => {
     const h = parseInt(scores.home), a = parseInt(scores.away)
@@ -203,7 +205,28 @@ function GamesTab({ games, teams, onRefresh, setMsg }: { games: Game[]; teams: T
       .update({ home_score: h, away_score: a, game_status: 'final' })
       .eq('id', game.id)
     if (error) setMsg(error.message)
-    else { setMsg('✓ Scores saved'); setEditing(null); setScores({ home: '', away: '' }); onRefresh() }
+    else { setMsg('✓ Scores saved'); setScoreEditing(null); setScores({ home: '', away: '' }); onRefresh() }
+  }
+
+  const startLineEdit = (game: Game) => {
+    setLines({
+      spread: game.spread_line?.toString() ?? '',
+      total: game.total_line?.toString() ?? '',
+      ml_home: game.moneyline_home?.toString() ?? '',
+      ml_away: game.moneyline_away?.toString() ?? '',
+    })
+    setLineEditing(game.id)
+  }
+
+  const saveLines = async (game: Game) => {
+    const updates: any = {}
+    if (lines.spread !== '') updates.spread_line = parseFloat(lines.spread)
+    if (lines.total !== '') updates.total_line = parseFloat(lines.total)
+    if (lines.ml_home !== '') updates.moneyline_home = parseInt(lines.ml_home)
+    if (lines.ml_away !== '') updates.moneyline_away = parseInt(lines.ml_away)
+    const { error } = await supabase.from('games').update(updates).eq('id', game.id)
+    if (error) setMsg(error.message)
+    else { setMsg('✓ Lines updated'); setLineEditing(null); onRefresh() }
   }
 
   return (
@@ -220,11 +243,81 @@ function GamesTab({ games, teams, onRefresh, setMsg }: { games: Game[]; teams: T
           <p className="font-heading font-bold mb-2">
             {g.away_team?.short_name} @ {g.home_team?.short_name}
           </p>
-          <div className="text-sm text-text-secondary mb-3">
-            Spread: {g.spread_line} | Total: {g.total_line} | ML: {formatOdds(g.moneyline_home!)}/{formatOdds(g.moneyline_away!)}
-          </div>
-          
-          {editing?.id === g.id ? (
+
+          {/* Lines display / edit */}
+          {lineEditing === g.id ? (
+            <div className="mb-3 p-3 bg-bg-surface rounded-lg space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-text-secondary">Spread (home)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={lines.spread}
+                    onChange={e => setLines(l => ({ ...l, spread: e.target.value }))}
+                    className="w-full px-2 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                    placeholder="e.g. -6.5"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-text-secondary">Total (O/U)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={lines.total}
+                    onChange={e => setLines(l => ({ ...l, total: e.target.value }))}
+                    className="w-full px-2 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                    placeholder="e.g. 61.5"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-text-secondary">ML Home</label>
+                  <input
+                    type="number"
+                    value={lines.ml_home}
+                    onChange={e => setLines(l => ({ ...l, ml_home: e.target.value }))}
+                    className="w-full px-2 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                    placeholder="e.g. -240"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-text-secondary">ML Away</label>
+                  <input
+                    type="number"
+                    value={lines.ml_away}
+                    onChange={e => setLines(l => ({ ...l, ml_away: e.target.value }))}
+                    className="w-full px-2 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm mt-1"
+                    placeholder="e.g. 195"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => saveLines(g)} className="flex-1 py-1.5 bg-accent-green text-bg-primary font-bold rounded text-sm">
+                  Save Lines
+                </button>
+                <button onClick={() => setLineEditing(null)} className="px-3 py-1.5 bg-bg-primary border border-border-subtle rounded text-sm">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-sm text-text-secondary">
+                Spread: {g.spread_line} | O/U: {g.total_line} | ML: {formatOdds(g.moneyline_home!)}/{formatOdds(g.moneyline_away!)}
+              </span>
+              {g.game_status !== 'final' && (
+                <button
+                  onClick={() => startLineEdit(g)}
+                  className="text-xs px-2 py-0.5 bg-bg-surface border border-border-subtle rounded hover:border-accent-green shrink-0"
+                >
+                  ✏️ Lines
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Score entry */}
+          {scoreEditing === g.id ? (
             <div className="flex gap-2 items-center">
               <input
                 type="number"
@@ -244,7 +337,7 @@ function GamesTab({ games, teams, onRefresh, setMsg }: { games: Game[]; teams: T
               <button onClick={() => enterScores(g)} className="px-3 py-1 bg-accent-green text-bg-primary rounded text-sm">
                 Save
               </button>
-              <button onClick={() => setEditing(null)} className="px-3 py-1 bg-bg-surface rounded text-sm">
+              <button onClick={() => setScoreEditing(null)} className="px-3 py-1 bg-bg-surface rounded text-sm">
                 Cancel
               </button>
             </div>
@@ -252,7 +345,7 @@ function GamesTab({ games, teams, onRefresh, setMsg }: { games: Game[]; teams: T
             <p className="font-heading">{g.away_score} - {g.home_score}</p>
           ) : (
             <button
-              onClick={() => { setEditing(g); setScores({ home: '', away: '' }) }}
+              onClick={() => { setScoreEditing(g.id); setScores({ home: '', away: '' }) }}
               className="px-3 py-1 bg-bg-surface rounded text-sm hover:bg-accent-green hover:text-bg-primary"
             >
               Enter Score
