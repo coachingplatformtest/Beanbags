@@ -18,12 +18,12 @@ BEGIN
     AND EXISTS (
       SELECT 1 FROM parlay_legs pl
       WHERE pl.parlay_id = pb.id
-        AND pl.selection ILIKE '%Maudlin%Passing Yards%'
+        AND pl.selection ILIKE '%Mauldin%Passing Yards%'
     )
     AND EXISTS (
       SELECT 1 FROM parlay_legs pl
       WHERE pl.parlay_id = pb.id
-        AND pl.selection ILIKE '%Maudlin%Passing TDs%'
+        AND pl.selection ILIKE '%Mauldin%Passing TDs%'
     )
   LIMIT 1;
 

@@ -29,7 +29,7 @@ VALUES ('national_championship', 'Ceeps (CPU Teams)', NULL, '+3000', 3000, 'Any 
 INSERT INTO futures (category, selection_name, odds, odds_numeric, description) VALUES
 ('heisman', 'Nick Moncrief (CLEM QB)', '+125', 125, 'Clemson QB - Heisman favorite'),
 ('heisman', 'Zay Goings (PSU QB)', '+250', 250, 'Penn State QB - Elite signal caller'),
-('heisman', 'Peter Maudlin (FSU QB)', '+600', 600, 'Florida State QB - Explosive freshman'),
+('heisman', 'Peter Mauldin (FSU QB)', '+600', 600, 'Florida State QB - Explosive freshman'),
 ('heisman', 'Butta Bontana (OSU WR)', '+750', 750, 'Ohio State WR'),
 ('heisman', 'Rhemontae Juggs (OSU RB)', '+900', 900, 'Ohio State RB'),
 ('heisman', 'Jojo Binkin It (BUF QB)', '+1000', 1000, 'Buffalo QB'),
