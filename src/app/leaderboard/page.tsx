@@ -24,7 +24,7 @@ export default function LeaderboardPage() {
       const { data } = await supabase
         .from('leaderboard')
         .select('*')
-        .order('net_profit', { ascending: false })
+        .order('units_remaining', { ascending: false })
       
       if (data) setLeaderboard(data as LeaderboardEntry[])
     } catch (err) {

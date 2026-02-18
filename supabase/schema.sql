@@ -186,4 +186,4 @@ SELECT
     ELSE 0 
   END as roi
 FROM users
-ORDER BY (units_won - units_lost) DESC;
+ORDER BY units_remaining DESC;
