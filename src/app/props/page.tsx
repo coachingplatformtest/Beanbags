@@ -23,13 +23,25 @@ export default function PropsPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const { data } = await supabase
+      // Try with team join first (requires migration); fall back if column doesn't exist yet
+      let { data, error } = await supabase
         .from('props')
         .select('*, team:teams(*), game:games(*, home_team:teams!games_home_team_id_fkey(*), away_team:teams!games_away_team_id_fkey(*))')
         .eq('is_active', true)
         .neq('category', 'season_win_total')
         .order('created_at', { ascending: false })
-      
+
+      if (error) {
+        // Migration not run yet — fetch without team join
+        const fallback = await supabase
+          .from('props')
+          .select('*, game:games(*, home_team:teams!games_home_team_id_fkey(*), away_team:teams!games_away_team_id_fkey(*))')
+          .eq('is_active', true)
+          .neq('category', 'season_win_total')
+          .order('created_at', { ascending: false })
+        data = fallback.data
+      }
+
       if (data) setProps(data as Prop[])
     } catch (err) {
       console.error(err)
