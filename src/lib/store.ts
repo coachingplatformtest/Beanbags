@@ -28,6 +28,10 @@ interface AppStore {
   slipOpen: boolean
   setSlipOpen: (open: boolean) => void
   
+  // Slate
+  slateStatus: 'open' | 'locked' | 'settled'
+  setSlateStatus: (status: 'open' | 'locked' | 'settled') => void
+  
   // Admin
   isAdmin: boolean
   setIsAdmin: (admin: boolean) => void
@@ -102,6 +106,10 @@ export const useStore = create<AppStore>()(
       // UI
       slipOpen: false,
       setSlipOpen: (open) => set({ slipOpen: open }),
+      
+      // Slate
+      slateStatus: 'open',
+      setSlateStatus: (status) => set({ slateStatus: status }),
       
       // Admin
       isAdmin: false,

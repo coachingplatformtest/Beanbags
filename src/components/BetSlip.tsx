@@ -13,6 +13,7 @@ export function BetSlip() {
     parlayMode, setParlayMode,
     getTotalOdds, getPotentialPayout,
     slipOpen, setSlipOpen,
+    slateStatus,
   } = useStore()
   
   const [placing, setPlacing] = useState(false)
@@ -23,7 +24,8 @@ export function BetSlip() {
   const payout = getPotentialPayout()
   const totalOdds = getTotalOdds()
   const totalWager = parlayMode ? stake : stake * betSlip.length
-  const canPlace = user && betSlip.length > 0 && stake >= 0.5 && totalWager <= user.units_remaining
+  const bettingOpen = slateStatus === 'open'
+  const canPlace = bettingOpen && user && betSlip.length > 0 && stake >= 0.5 && totalWager <= user.units_remaining
 
   const placeBets = async () => {
     if (!canPlace || !user) return
@@ -225,6 +227,16 @@ export function BetSlip() {
                 </div>
               </div>
 
+              {/* Locked banner */}
+              {!bettingOpen && (
+                <div className="mb-3 p-3 rounded-lg bg-accent-red/10 border border-accent-red/30 text-center">
+                  <p className="text-accent-red font-heading font-bold text-sm">
+                    🔒 BETTING {slateStatus === 'settled' ? 'CLOSED — WEEK SETTLED' : 'LOCKED — LINES ARE SET'}
+                  </p>
+                  <p className="text-xs text-text-secondary mt-1">No new bets until next week opens</p>
+                </div>
+              )}
+
               {/* Place button */}
               <button
                 onClick={() => setShowConfirm(true)}
@@ -235,10 +247,13 @@ export function BetSlip() {
                 {placing ? 'Placing...' : `Place Bet — ${formatUnits(totalWager)}u`}
               </button>
 
-              {!user && (
+              {!bettingOpen && (
+                <p className="text-xs text-text-secondary text-center mt-2">Selections saved for when betting reopens</p>
+              )}
+              {bettingOpen && !user && (
                 <p className="text-sm text-accent-red text-center mt-2">Enter your name to bet</p>
               )}
-              {user && totalWager > user.units_remaining && (
+              {bettingOpen && user && totalWager > user.units_remaining && (
                 <p className="text-sm text-accent-red text-center mt-2">Insufficient units</p>
               )}
               {error && <p className="text-sm text-accent-red text-center mt-2">{error}</p>}
@@ -280,8 +295,8 @@ export function BetSlip() {
               </button>
               <button
                 onClick={placeBets}
-                disabled={placing}
-                className="flex-1 py-3 bg-accent-green text-bg-primary rounded-lg font-semibold"
+                disabled={placing || !bettingOpen}
+                className="flex-1 py-3 bg-accent-green text-bg-primary rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {placing ? 'Placing...' : 'Confirm'}
               </button>

@@ -1,11 +1,25 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect } from 'react'
 import { useStore } from '@/lib/store'
+import { supabase } from '@/lib/supabase'
 import { formatUnits } from '@/lib/betting-math'
 
 export function UserBar() {
-  const { user, betSlip, slipOpen, setSlipOpen } = useStore()
+  const { user, betSlip, slipOpen, setSlipOpen, slateStatus, setSlateStatus } = useStore()
+
+  useEffect(() => {
+    supabase
+      .from('weekly_slate')
+      .select('slate_status')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data?.slate_status) setSlateStatus(data.slate_status as any)
+      })
+  }, [])
 
   return (
     <header className="sticky top-0 z-40 bg-bg-primary/95 backdrop-blur border-b border-border-subtle">
@@ -39,6 +53,11 @@ export function UserBar() {
 
         {/* Right */}
         <div className="flex items-center gap-3">
+          {slateStatus !== 'open' && (
+            <span className="hidden sm:flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full bg-accent-red/10 text-accent-red border border-accent-red/30">
+              🔒 {slateStatus === 'settled' ? 'SETTLED' : 'LOCKED'}
+            </span>
+          )}
           {user && (
             <div className="hidden sm:flex items-center gap-2 bg-bg-card px-3 py-1.5 rounded-full border border-border-subtle">
               <span className="text-sm text-text-secondary">{user.name}</span>
