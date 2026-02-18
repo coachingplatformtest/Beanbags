@@ -559,10 +559,9 @@ function BetsTab({ bets, parlays }: { bets: any[]; parlays: any[] }) {
   const [filterStatus, setFilterStatus] = useState('all')
   const [view, setView] = useState<'straight' | 'parlays'>('straight')
 
-  const users = Array.from(new Set([
-    ...bets.map(b => b.user?.name),
-    ...parlays.map(p => p.user?.name),
-  ].filter(Boolean)))
+  const users = Array.from(new Set(
+    (view === 'straight' ? bets : parlays).map((b: any) => b.user?.name).filter(Boolean)
+  ))
 
   const filteredBets = bets.filter(b => {
     if (filterUser !== 'all' && b.user?.name !== filterUser) return false
