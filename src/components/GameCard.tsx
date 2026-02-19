@@ -2,6 +2,7 @@
 
 import { useStore } from '@/lib/store'
 import { formatOdds } from '@/lib/betting-math'
+import { getUserTeam } from '@/lib/user-teams'
 import type { Game } from '@/types'
 
 interface Props {
@@ -10,12 +11,19 @@ interface Props {
 }
 
 export function GameCard({ game, locked = false }: Props) {
-  const { addToSlip, removeFromSlip, isInSlip, betSlip, slateStatus } = useStore()
+  const { user, addToSlip, removeFromSlip, isInSlip, betSlip, slateStatus } = useStore()
   const canAdd = betSlip.length < 5
   const bettingOpen = slateStatus === 'open'
 
   const home = game.home_team!
   const away = game.away_team!
+  
+  // Check if user is restricted from betting on this game
+  const userTeam = user ? getUserTeam(user.name) : null
+  const isOwnGame = userTeam && (
+    home.short_name.toLowerCase() === userTeam.toLowerCase() ||
+    away.short_name.toLowerCase() === userTeam.toLowerCase()
+  )
   const isFinal = game.game_status === 'final'
   const isLive = game.game_status === 'live'
 
@@ -75,6 +83,7 @@ export function GameCard({ game, locked = false }: Props) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 flex-wrap">
           {game.is_user_game && <span className="badge badge-user-game">🎮 User Game</span>}
+          {isOwnGame && <span className="text-xs px-2 py-0.5 rounded-full bg-accent-red/10 text-accent-red border border-accent-red/30 font-medium">🚫 Your game</span>}
           {isLive  && <span className="badge badge-pending">LIVE</span>}
           {isFinal && <span className="badge badge-won">FINAL</span>}
           {locked  && <span className="badge" style={{background:'rgba(136,136,160,0.15)',color:'#8888a0'}}>🔒 Lines Pending</span>}
@@ -110,7 +119,7 @@ export function GameCard({ game, locked = false }: Props) {
             <div className="flex gap-2">
               <button
                 onClick={() => toggle(ids.spreadAway, () => addSpread('away'))}
-                disabled={locked || !bettingOpen || (!canAdd && !isInSlip(ids.spreadAway))}
+                disabled={locked || isOwnGame || !bettingOpen || (!canAdd && !isInSlip(ids.spreadAway))}
                 className={`odds-btn w-20 ${isInSlip(ids.spreadAway) ? 'selected' : ''}`}
               >
                 <div className="text-xs text-text-secondary">
@@ -120,7 +129,7 @@ export function GameCard({ game, locked = false }: Props) {
               </button>
               <button
                 onClick={() => toggle(ids.mlAway, () => addML('away'))}
-                disabled={locked || !bettingOpen || (!canAdd && !isInSlip(ids.mlAway))}
+                disabled={locked || isOwnGame || !bettingOpen || (!canAdd && !isInSlip(ids.mlAway))}
                 className={`odds-btn w-20 ${isInSlip(ids.mlAway) ? 'selected' : ''}`}
               >
                 <div className="text-xs text-text-secondary">ML</div>
@@ -128,7 +137,7 @@ export function GameCard({ game, locked = false }: Props) {
               </button>
               <button
                 onClick={() => toggle(ids.over, () => addTotal('over'))}
-                disabled={locked || !bettingOpen || (!canAdd && !isInSlip(ids.over))}
+                disabled={locked || isOwnGame || !bettingOpen || (!canAdd && !isInSlip(ids.over))}
                 className={`odds-btn w-20 ${isInSlip(ids.over) ? 'selected' : ''}`}
               >
                 <div className="text-xs text-text-secondary">O {game.total_line}</div>
@@ -149,7 +158,7 @@ export function GameCard({ game, locked = false }: Props) {
             <div className="flex gap-2">
               <button
                 onClick={() => toggle(ids.spreadHome, () => addSpread('home'))}
-                disabled={locked || !bettingOpen || (!canAdd && !isInSlip(ids.spreadHome))}
+                disabled={locked || isOwnGame || !bettingOpen || (!canAdd && !isInSlip(ids.spreadHome))}
                 className={`odds-btn w-20 ${isInSlip(ids.spreadHome) ? 'selected' : ''}`}
               >
                 <div className="text-xs text-text-secondary">
@@ -159,7 +168,7 @@ export function GameCard({ game, locked = false }: Props) {
               </button>
               <button
                 onClick={() => toggle(ids.mlHome, () => addML('home'))}
-                disabled={locked || !bettingOpen || (!canAdd && !isInSlip(ids.mlHome))}
+                disabled={locked || isOwnGame || !bettingOpen || (!canAdd && !isInSlip(ids.mlHome))}
                 className={`odds-btn w-20 ${isInSlip(ids.mlHome) ? 'selected' : ''}`}
               >
                 <div className="text-xs text-text-secondary">ML</div>
@@ -167,7 +176,7 @@ export function GameCard({ game, locked = false }: Props) {
               </button>
               <button
                 onClick={() => toggle(ids.under, () => addTotal('under'))}
-                disabled={locked || !bettingOpen || (!canAdd && !isInSlip(ids.under))}
+                disabled={locked || isOwnGame || !bettingOpen || (!canAdd && !isInSlip(ids.under))}
                 className={`odds-btn w-20 ${isInSlip(ids.under) ? 'selected' : ''}`}
               >
                 <div className="text-xs text-text-secondary">U {game.total_line}</div>
