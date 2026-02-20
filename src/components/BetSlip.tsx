@@ -33,6 +33,20 @@ export function BetSlip() {
     setError('')
     
     try {
+      // Fetch fresh user balance from DB before placing bet (prevents stale data)
+      const { data: freshUser, error: userErr } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      
+      if (userErr || !freshUser) throw new Error('Failed to fetch user balance')
+      
+      // Check if user still has enough units with fresh balance
+      if (totalWager > freshUser.units_remaining) {
+        throw new Error('Insufficient units (balance changed)')
+      }
+      
       if (parlayMode && betSlip.length > 1) {
         // Create parlay bet
         const { data: parlay, error: pErr } = await supabase
@@ -83,16 +97,17 @@ export function BetSlip() {
         }
       }
       
-      // Update user units
-      const newUnits = user.units_remaining - totalWager
-      const newWagered = user.units_wagered + totalWager
+      // Update user units (using fresh balance from DB)
+      const newUnits = freshUser.units_remaining - totalWager
+      const newWagered = freshUser.units_wagered + totalWager
       
       await supabase
         .from('users')
         .update({ units_remaining: newUnits, units_wagered: newWagered })
         .eq('id', user.id)
       
-      setUser({ ...user, units_remaining: newUnits, units_wagered: newWagered })
+      // Update store with fresh data
+      setUser({ ...freshUser, units_remaining: newUnits, units_wagered: newWagered })
       clearSlip()
       setShowConfirm(false)
       setSuccess(`Bet placed! ${formatUnits(totalWager)}u wagered`)

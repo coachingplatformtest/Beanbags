@@ -7,9 +7,10 @@ import { supabase } from '@/lib/supabase'
 import { formatUnits } from '@/lib/betting-math'
 
 export function UserBar() {
-  const { user, betSlip, slipOpen, setSlipOpen, slateStatus, setSlateStatus } = useStore()
+  const { user, setUser, betSlip, slipOpen, setSlipOpen, slateStatus, setSlateStatus } = useStore()
 
   useEffect(() => {
+    // Fetch slate status
     supabase
       .from('weekly_slate')
       .select('slate_status')
@@ -19,7 +20,19 @@ export function UserBar() {
       .then(({ data }) => {
         if (data?.slate_status) setSlateStatus(data.slate_status as any)
       })
-  }, [])
+    
+    // Refresh user balance from DB on mount (prevents stale data)
+    if (user) {
+      supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+        .then(({ data }) => {
+          if (data) setUser(data as any)
+        })
+    }
+  }, [user?.id])
 
   return (
     <header className="sticky top-0 z-40 bg-bg-primary/95 backdrop-blur border-b border-border-subtle">
